@@ -22,6 +22,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+API_AVAILABLE(ios(10.0))
 @interface CameraPreview : NSObject<FlutterTexture, AVCaptureVideoDataOutputSampleBufferDelegate,
 AVCaptureAudioDataOutputSampleBufferDelegate>
 
@@ -47,7 +48,7 @@ AVCaptureAudioDataOutputSampleBufferDelegate>
 @property(readonly, nonatomic) MotionController *motionController;
 @property(readonly, nonatomic) VideoController *videoController;
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
-    
+
 - (instancetype)initWithCameraSensor:(CameraSensor)sensor
                         streamImages:(BOOL)streamImages
                          captureMode:(CaptureModes)captureMode
@@ -75,7 +76,7 @@ AVCaptureAudioDataOutputSampleBufferDelegate>
 - (CGFloat)getMaxZoom;
 - (CGSize)getEffectivPreviewSize;
 - (void)setUpCaptureSessionForAudio;
-
+- (void)setMaxZoomFactor: (double)factor;
 @end
 
 NS_ASSUME_NONNULL_END

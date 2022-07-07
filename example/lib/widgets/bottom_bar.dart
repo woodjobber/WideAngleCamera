@@ -1,5 +1,6 @@
 import 'package:camerawesome/models/capture_modes.dart';
 import 'package:camerawesome/models/orientations.dart';
+import 'package:camerawesome_example/widgets/bottom_slider.dart';
 import 'package:camerawesome_example/widgets/camera_buttons.dart';
 import 'package:camerawesome_example/widgets/take_photo_button.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,8 @@ class BottomBarWidget extends StatelessWidget {
   final bool isRecording;
   final Function onZoomInTap;
   final Function onZoomOutTap;
+  final Function(double) onZoomTap;
+
   final Function onCaptureTap;
   final Function onCaptureModeSwitchChange;
 
@@ -23,6 +26,7 @@ class BottomBarWidget extends StatelessWidget {
     @required this.captureMode,
     @required this.onZoomOutTap,
     @required this.onZoomInTap,
+    @required this.onZoomTap,
     @required this.onCaptureTap,
     @required this.onCaptureModeSwitchChange,
   }) : super(key: key);
@@ -43,6 +47,9 @@ class BottomBarWidget extends StatelessWidget {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                BottomSlider(
+                  onZoomTap: (value) => onZoomTap?.call(value),
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: <Widget>[

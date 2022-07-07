@@ -136,7 +136,7 @@ class CameraAwesomeState extends State<CameraAwesome>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance?.addObserver(this);
   }
 
   @override
@@ -186,7 +186,7 @@ class CameraAwesomeState extends State<CameraAwesome>
   void dispose() {
     started = false;
     stopping = true;
-    WidgetsBinding.instance.removeObserver(this);
+    WidgetsBinding.instance?.removeObserver(this);
     CamerawesomePlugin.stop();
     selectedAndroidPhotoSize!.dispose();
     selectedPreviewSize!.dispose();
@@ -320,8 +320,8 @@ class CameraAwesomeState extends State<CameraAwesome>
   _initZoom() {
     if (widget.zoom != null) {
       widget.zoom!.addListener(() {
-        if (widget.zoom!.value < 0 || widget.zoom!.value > 1) {
-          throw "Zoom value must be between 0 and 1";
+        if (widget.zoom!.value < 0 || widget.zoom!.value > 5) {
+          return;
         }
         CamerawesomePlugin.setZoom(widget.zoom!.value);
       });

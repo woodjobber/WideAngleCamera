@@ -224,6 +224,12 @@ class CamerawesomePlugin {
         'mode': flashMode.toString().split(".")[1],
       });
 
+  /// Set max zoom factor ，defalut is 6x
+  static Future<void> setMaxZoomFactor(double factor) =>
+      _channel.invokeMethod('setMaxZoomFactor', <String, dynamic>{
+        'maxZoomFactor': factor,
+      });
+
   /// TODO - Next step focus on a certain point
   static startAutoFocus() => _channel.invokeMethod("handleAutoFocus");
 

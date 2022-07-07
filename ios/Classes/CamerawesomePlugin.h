@@ -1,7 +1,7 @@
 #import <Flutter/Flutter.h>
 
 NS_ASSUME_NONNULL_BEGIN
-
+API_AVAILABLE(ios(10.0))
 @interface CamerawesomePlugin : NSObject<FlutterPlugin, FlutterStreamHandler>
 @end
 

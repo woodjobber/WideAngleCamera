@@ -161,8 +161,12 @@ class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
               }),
         ),
         BottomBarWidget(
+          onZoomTap: (value) {
+            _zoomNotifier.value = value;
+            setState(() {});
+          },
           onZoomInTap: () {
-            if (_zoomNotifier.value <= 0.9) {
+            if (_zoomNotifier.value <= 5) {
               _zoomNotifier.value += 0.1;
             }
             setState(() {});
@@ -170,6 +174,8 @@ class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
           onZoomOutTap: () {
             if (_zoomNotifier.value >= 0.1) {
               _zoomNotifier.value -= 0.1;
+            } else {
+              if (_zoomNotifier.value != 0) _zoomNotifier.value = 0.0;
             }
             setState(() {});
           },

@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void(^OnPictureTaken)(void);
 
+API_AVAILABLE(ios(10.0))
 @interface CameraPictureController : NSObject <AVCapturePhotoCaptureDelegate>
 @property(readonly, nonatomic) NSString *path;
 @property(readonly, nonatomic) FlutterResult result;

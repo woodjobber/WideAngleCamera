@@ -6,6 +6,263 @@
 //
 
 #import "CameraPreview.h"
+#import "UIDevice+Extension.h"
+#import "CameraEnum.h"
+
+API_AVAILABLE(ios(10.0))
+@interface PhotoCaptureOutputAdaptee : NSObject
+
+@property (nonatomic, strong) AVCapturePhotoOutput *photoOutput;
+
+@end
+
+@implementation PhotoCaptureOutputAdaptee
+{
+    NSDictionary<AVCaptureDeviceType,AVCaptureDevice *> *availableRearDeviceMap;
+    NSDictionary<AVCaptureDeviceType,AVCaptureDevice *> *availableFrontDeviceMap;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        availableRearDeviceMap = [self availableDevicesForPostion:AVCaptureDevicePositionBack];
+        availableFrontDeviceMap = [self availableDevicesForPostion:AVCaptureDevicePositionFront];
+    }
+    return self;
+}
+
+- (NSDictionary<AVCaptureDeviceType,AVCaptureDevice *> *)availableDevicesForPostion:(AVCaptureDevicePosition)postion
+{
+    NSMutableArray *queryDeviceTypes = [NSMutableArray arrayWithObjects:AVCaptureDeviceTypeBuiltInWideAngleCamera, AVCaptureDeviceTypeBuiltInTelephotoCamera,nil];
+    if (@available(iOS 10.2, *)) {
+        [queryDeviceTypes addObject:AVCaptureDeviceTypeBuiltInDualCamera];
+    }
+    
+    if (@available(iOS 13, *)) {
+        [queryDeviceTypes addObject:AVCaptureDeviceTypeBuiltInUltraWideCamera];
+        [queryDeviceTypes addObject:AVCaptureDeviceTypeBuiltInDualWideCamera];
+        [queryDeviceTypes addObject:AVCaptureDeviceTypeBuiltInTripleCamera];
+    }
+    
+    AVCaptureDeviceDiscoverySession * session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:queryDeviceTypes mediaType:AVMediaTypeVideo position:postion];
+    
+    NSMutableDictionary<AVCaptureDeviceType,AVCaptureDevice *> * deviceMap = [NSMutableDictionary dictionary];
+    
+    for (AVCaptureDevice * device in session.devices) {
+        [deviceMap setObject:device forKey:device.deviceType];
+    }
+    
+    return deviceMap;
+}
+
+- (NSArray<AVCaptureDeviceType> *)availableDeviceTypesForPostion: (AVCaptureDevicePosition)postion
+{
+    NSMutableArray<AVCaptureDeviceType> * deviceTypes = [NSMutableArray array];
+    switch (postion) {
+        case AVCaptureDevicePositionFront:
+            for (AVCaptureDeviceType deviceType in availableFrontDeviceMap.allKeys) {
+                [deviceTypes addObject:deviceType];
+            }
+            break;
+        case AVCaptureDevicePositionUnspecified:
+            for (AVCaptureDeviceType deviceType in availableFrontDeviceMap.allKeys) {
+                [deviceTypes addObject:deviceType];
+            }
+            break;
+        case AVCaptureDevicePositionBack:
+            for (AVCaptureDeviceType deviceType in availableRearDeviceMap.allKeys) {
+                [deviceTypes addObject:deviceType];
+            }
+            break;
+        default:
+            return [NSArray array];
+            break;
+    }
+    return [NSArray arrayWithArray:deviceTypes];
+}
+
+- (NSArray<NSNumber *> *)cameraSwitchOverZoomFactorsForPostion:(AVCaptureDevicePosition)postion {
+    NSDictionary<AVCaptureDeviceType,AVCaptureDevice *> * deviceMap = postion == AVCaptureDevicePositionFront ? availableFrontDeviceMap : availableRearDeviceMap;
+    
+    if (@available(iOS 13, *)) {
+        AVCaptureDevice * multiCameraDevice = deviceMap[AVCaptureDeviceTypeBuiltInDualWideCamera];
+        if (multiCameraDevice == nil) {
+            multiCameraDevice = deviceMap[AVCaptureDeviceTypeBuiltInTripleCamera];
+        }
+        if (multiCameraDevice == nil) {
+            multiCameraDevice = deviceMap[AVCaptureDeviceTypeBuiltInDualCamera];
+        }
+        
+        NSArray<NSNumber *> *factors = multiCameraDevice.virtualDeviceSwitchOverVideoZoomFactors;
+        return factors;
+    }else {
+        if (@available(iOS 10.2, *)) {
+            if (deviceMap[AVCaptureDeviceTypeBuiltInDualCamera] != nil) {
+                return [[UIDevice currentDevice] isPlusSizePhone] ? @[@(2.5)] : @[@(2)];
+            }
+        } else {
+            return @[];
+        }
+    }
+    return @[];
+}
+
+- (AVCaptureDevice * _Nullable)videoDeviceForDeviceType:(AVCaptureDeviceType)deviceType position:(AVCaptureDevicePosition)postion {
+    switch (postion) {
+        case AVCaptureDevicePositionBack:
+            return availableRearDeviceMap[deviceType];
+        case AVCaptureDevicePositionUnspecified:
+        case AVCaptureDevicePositionFront:
+            return availableFrontDeviceMap[deviceType];
+        default:
+            return [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack];
+    }
+}
+
+@end
+
+const CGFloat MAX_ZOOM_FACTOR = 6.0;
+
+API_AVAILABLE(ios(10.0))
+@interface CameraHelper : NSObject
+
+@end
+
+@implementation CameraHelper
+
++ (NSArray<NSNumber *> *)availableCamerasForPostion:(AVCaptureDevicePosition)position photoCaptureOutput: (PhotoCaptureOutputAdaptee *) photoCaptureOutput {
+    NSArray<AVCaptureDeviceType> * avTypes = [photoCaptureOutput availableDeviceTypesForPostion:position];
+    NSMutableArray * cameras = [NSMutableArray array];
+    if (@available(iOS 13, *)) {
+        if ([avTypes containsObject:AVCaptureDeviceTypeBuiltInUltraWideCamera]) {
+            [cameras addObject: @(CameraTypeUltraWide)];
+        }
+    }
+    
+    if ([avTypes containsObject:AVCaptureDeviceTypeBuiltInWideAngleCamera]) {
+        [cameras addObject: @(CameraTypeWideAngle)];
+    }
+    if ([avTypes containsObject:AVCaptureDeviceTypeBuiltInTelephotoCamera]) {
+        [cameras addObject: @(CameraTypeTelephoto)];
+    }
+    return cameras;
+}
+
++ (CameraSystem)bestAvailableCameraSystemForPostion:(AVCaptureDevicePosition)position photoCaptureOutput:(PhotoCaptureOutputAdaptee *) photoCaptureOutput{
+    NSArray<AVCaptureDeviceType> * avTypes = [photoCaptureOutput availableDeviceTypesForPostion:position];
+    if (@available(iOS 13, *)) {
+        if ([avTypes containsObject: AVCaptureDeviceTypeBuiltInUltraWideCamera]) {
+            return CameraSystemTriple;
+        }
+        if ([avTypes containsObject: AVCaptureDeviceTypeBuiltInDualWideCamera]) {
+            return CameraSystemDualWide;
+        }
+    }
+    if (@available(iOS 10.2, *)) {
+        if ([avTypes containsObject: AVCaptureDeviceTypeBuiltInDualCamera]) {
+            return CameraSystemDual;
+        }
+    }
+    return CameraSystemWide;
+}
+
++ (AVCaptureDeviceType)avCaptureDeviceTypeForCameraSystem:(CameraSystem) cameraSystem {
+    switch (cameraSystem) {
+        case CameraSystemWide:
+            return AVCaptureDeviceTypeBuiltInWideAngleCamera;
+        case CameraSystemDual:
+            if (@available(iOS 10.2, *)) {
+                return AVCaptureDeviceTypeBuiltInDualCamera;
+            } else {
+                return AVCaptureDeviceTypeBuiltInWideAngleCamera;
+            }
+        case CameraSystemDualWide:
+            if (@available(iOS 13.0, *)) {
+                return AVCaptureDeviceTypeBuiltInDualWideCamera;
+            } else {
+                return AVCaptureDeviceTypeBuiltInWideAngleCamera;
+            }
+        case CameraSystemTriple:
+            if (@available(iOS 13.0, *)) {
+                return AVCaptureDeviceTypeBuiltInTripleCamera;
+            } else {
+                return AVCaptureDeviceTypeBuiltInWideAngleCamera;
+            }
+        default:
+            return AVCaptureDeviceTypeBuiltInWideAngleCamera;
+    }
+}
+
++ (CGFloat)minVisibleVideoZoomForDevice:(AVCaptureDevice *)device photoCaptureOutput: (PhotoCaptureOutputAdaptee *) photoCaptureOutput{
+    NSArray<NSNumber *> *cameras = [self availableCamerasForPostion:device.position photoCaptureOutput:photoCaptureOutput];
+    if ([cameras containsObject:@(CameraTypeUltraWide)]) {
+        return 0.5;
+    }
+    return 1;
+}
+
+// 6x of the "zoom factor" of the camera with the longest focal length
++ (CGFloat)maximumZoomFactorForDevice:(AVCaptureDevice *)device  photoCaptureOutput:(PhotoCaptureOutputAdaptee *) photoCaptureOutput{
+    AVCaptureDevicePosition position = device.position;
+    NSDictionary<NSNumber *, NSNumber *> * cameraZoomFactorMap = [self cameraZoomFactorMapForPostion:position photoCaptureOutput:photoCaptureOutput];
+    NSArray<NSNumber *> * allValues = cameraZoomFactorMap.allValues;
+    CGFloat factor = 1;
+    for (NSNumber * value in allValues) {
+        if (value.doubleValue > factor) {
+            factor = value.doubleValue;
+        }
+    }
+    CGFloat maxVisibleZoomFactor = MAX_ZOOM_FACTOR * factor;
+    return maxVisibleZoomFactor / [self cameraZoomFactorMultiplierForPostion:position photoCaptureOutput:photoCaptureOutput];
+}
+
++ (NSDictionary<NSNumber *, NSNumber *> *)cameraZoomFactorMapForPostion:(AVCaptureDevicePosition)position photoCaptureOutput:(PhotoCaptureOutputAdaptee *) photoCaptureOutput {
+    NSArray<NSNumber *> *zoomFactors = [photoCaptureOutput cameraSwitchOverZoomFactorsForPostion:position];
+    NSArray<AVCaptureDeviceType> *avTypes = [photoCaptureOutput availableDeviceTypesForPostion:position];
+    CGFloat cameraZoomFactorMultiplier = [self cameraZoomFactorMultiplierForPostion:position photoCaptureOutput:photoCaptureOutput];
+    NSMutableDictionary<NSNumber *, NSNumber *> *cameraMap = [NSMutableDictionary dictionary];
+    if (@available(iOS 13, *)) {
+        if ([avTypes containsObject:AVCaptureDeviceTypeBuiltInUltraWideCamera]) {
+            cameraMap[@(CameraTypeWideAngle)] = @(cameraZoomFactorMultiplier);
+        }
+    }
+    if ([avTypes containsObject:AVCaptureDeviceTypeBuiltInTelephotoCamera] && zoomFactors.lastObject) {
+        cameraMap[@(CameraTypeTelephoto)] = @(cameraZoomFactorMultiplier * zoomFactors.lastObject.doubleValue);
+    }
+    
+    cameraMap[@(CameraTypeWideAngle)] = @(1);
+    
+    return cameraMap;
+}
+
+// If device has an ultra-wide camera then API zoom factor of "1" means
+// full FOV of the ultra-wide camera which is "0.5" in the UI.
++ (CGFloat)cameraZoomFactorMultiplierForPostion:(AVCaptureDevicePosition)position photoCaptureOutput: (PhotoCaptureOutputAdaptee *) photoCaptureOutput {
+    NSArray<NSNumber *> *cameras = [self availableCamerasForPostion:position photoCaptureOutput:photoCaptureOutput];
+    if ([cameras containsObject:@(CameraTypeUltraWide)]) {
+        return 0.5;
+    }
+    return 1;
+}
+
++ (CameraType)cameraTypeForValue:(NSNumber *)value  {
+    switch (value.intValue) {
+        case 0:
+            return CameraTypeUltraWide;
+        case 1:
+            return CameraTypeWideAngle;
+        default:
+            return CameraTypeTelephoto;
+    }
+}
+
+@end
+
+@interface CameraPreview ()
+@property (nonatomic,strong) PhotoCaptureOutputAdaptee * photoCaptureAdaptee;
+@property (assign, nonatomic) CGFloat maxZoomFactor;
+@end
 
 @implementation CameraPreview {
     dispatch_queue_t _dispatchQueue;
@@ -25,7 +282,7 @@
     _result = result;
     _messenger = messenger;
     _dispatchQueue = dispatchQueue;
-
+    
     // Creating capture session
     _captureSession = [[AVCaptureSession alloc] init];
     _captureVideoOutput = [AVCaptureVideoDataOutput new];
@@ -39,7 +296,7 @@
     [_captureConnection setAutomaticallyAdjustsVideoMirroring:NO];
     
     _captureMode = captureMode;
-    
+    _maxZoomFactor = MAX_ZOOM_FACTOR;
     // By default enable auto flash mode
     _flashMode = AVCaptureFlashModeOff;
     _torchMode = AVCaptureTorchModeOff;
@@ -57,6 +314,10 @@
     [_motionController startMotionDetection];
 
     return self;
+}
+
+- (AVCapturePhotoOutput *)capturePhotoOutput {
+    return _photoCaptureAdaptee.photoOutput;
 }
 
 /// Init camera preview with Front or Rear sensor
@@ -82,9 +343,12 @@
     [_captureSession addConnection:_captureConnection];
     
     // Creating photo output
-    _capturePhotoOutput = [AVCapturePhotoOutput new];
-    [_capturePhotoOutput setHighResolutionCaptureEnabled:YES];
-    [_captureSession addOutput:_capturePhotoOutput];
+    _photoCaptureAdaptee = [[PhotoCaptureOutputAdaptee alloc] init];
+    _photoCaptureAdaptee.photoOutput = [[AVCapturePhotoOutput alloc] init];
+    [_photoCaptureAdaptee.photoOutput setLivePhotoCaptureEnabled:NO];
+    [_photoCaptureAdaptee.photoOutput setHighResolutionCaptureEnabled:YES];
+    [_captureSession addOutput:_photoCaptureAdaptee.photoOutput];
+   
     
     // Mirror the preview only on portrait mode
     [_captureConnection setAutomaticallyAdjustsVideoMirroring:NO];
@@ -185,7 +449,7 @@
     }
     [_videoController setAudioIsDisconnected:YES];
 
-    [_captureSession removeOutput:_capturePhotoOutput];
+    [_captureSession removeOutput:_photoCaptureAdaptee.photoOutput];
     [_captureSession removeConnection:_captureConnection];
     
     // Init the camera preview with the selected sensor
@@ -196,14 +460,72 @@
     _cameraSensor = sensor;
 }
 
+//最小缩放值
+- (CGFloat)minZoomFactor
+{
+    CGFloat minZoomFactor = 1.0;
+    if (@available(iOS 11.0, *)) {
+        minZoomFactor = _captureDevice.minAvailableVideoZoomFactor;
+    }
+    return minZoomFactor;
+}
+
+//最大缩放值
+- (CGFloat)_maxZoomFactor
+{
+    CGFloat maxZoomFactor = _captureDevice.activeFormat.videoMaxZoomFactor;
+    if (@available(iOS 11.0, *)) {
+        maxZoomFactor = _captureDevice.maxAvailableVideoZoomFactor;
+    }
+    if (_maxZoomFactor <= 0) {
+        _maxZoomFactor = MAX_ZOOM_FACTOR;
+    }
+    if (maxZoomFactor > _maxZoomFactor) {
+        maxZoomFactor = MAX_ZOOM_FACTOR;
+    }
+    return maxZoomFactor;
+}
+
+- (void)setMaxZoomFactor:(double)factor {
+    _maxZoomFactor = factor;
+}
+
 /// Set zoom level
-- (void)setZoom:(float)value {
-    CGFloat maxZoom = _captureDevice.activeFormat.videoMaxZoomFactor;
-    CGFloat scaledZoom = value * (maxZoom - 1.0f) + 1.0f;
+- (void)setZoom:(float)value
+{
+    CGFloat maxZoom = self._maxZoomFactor;
+    CGFloat scaledZoom = value * (maxZoom - 1.0f) / (maxZoom - 1.0f) + 1.0f;
+    if (_captureDevice.videoZoomFactor == maxZoom && value > maxZoom) {
+        return;
+    }
+    
+    if (_captureDevice.videoZoomFactor == [self minZoomFactor] && value <= 0) {
+        return;
+    }
+    
+    [self updateZoomFactor:scaledZoom];
+}
+
+- (void)updateZoomFactor:(CGFloat)zoomFactor {
     
     NSError *error;
     if ([_captureDevice lockForConfiguration:&error]) {
-        _captureDevice.videoZoomFactor = scaledZoom;
+        CGFloat zoomFactorMultiplier = [CameraHelper cameraZoomFactorMultiplierForPostion:_captureDevice.position photoCaptureOutput:_photoCaptureAdaptee];
+        CGFloat minimumZoomFactor = [CameraHelper minVisibleVideoZoomForDevice:_captureDevice photoCaptureOutput:_photoCaptureAdaptee] / zoomFactorMultiplier;
+        CGFloat maxinumZoomFactor = [CameraHelper maximumZoomFactorForDevice:_captureDevice photoCaptureOutput:_photoCaptureAdaptee];
+        
+        CGFloat clampedZoomFactor = 1;
+        if (zoomFactor > maxinumZoomFactor) {
+            clampedZoomFactor = maxinumZoomFactor;
+        }
+        else if (zoomFactor < minimumZoomFactor) {
+            clampedZoomFactor = minimumZoomFactor;
+        }else {
+            clampedZoomFactor = zoomFactor;
+        }
+        CGFloat videoZoomFactor = MIN(clampedZoomFactor, [self maxZoomFactor]);
+        _captureDevice.videoZoomFactor = videoZoomFactor;
+//        [_captureDevice rampToVideoZoomFactor:videoZoomFactor withRate:16];
         [_captureDevice unlockForConfiguration];
     } else {
         _result([FlutterError errorWithCode:@"ZOOM_NOT_SET" message:@"can't set the zoom value" details:[error localizedDescription]]);
@@ -284,11 +606,15 @@
 /// Get the first available camera on device (front or rear)
 - (NSString *)selectAvailableCamera:(CameraSensor)sensor {
     NSArray<AVCaptureDevice *> *devices = [[NSArray alloc] init];
-    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
-                                                         discoverySessionWithDeviceTypes:@[ AVCaptureDeviceTypeBuiltInWideAngleCamera ]
-                                                         mediaType:AVMediaTypeVideo
-                                                         position:AVCaptureDevicePositionUnspecified];
-    devices = discoverySession.devices;
+    if (@available(iOS 10.0, *)) {
+        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
+                                                             discoverySessionWithDeviceTypes:@[ AVCaptureDeviceTypeBuiltInWideAngleCamera ]
+                                                             mediaType:AVMediaTypeVideo
+                                                             position:AVCaptureDevicePositionUnspecified];
+        devices = discoverySession.devices;
+    } else {
+        // Fallback on earlier versions
+    }
     
     NSInteger cameraType = (sensor == Front) ? AVCaptureDevicePositionFront : AVCaptureDevicePositionBack;
     for (AVCaptureDevice *device in devices) {
@@ -340,11 +666,15 @@
     }];
     
     // Create settings instance
-    AVCapturePhotoSettings *settings = [AVCapturePhotoSettings photoSettings];
-    [settings setFlashMode:_flashMode];
-    
-    [_capturePhotoOutput capturePhotoWithSettings:settings
-                                         delegate:cameraPicture];
+    if (@available(iOS 10.0, *)) {
+        AVCapturePhotoSettings *settings = [AVCapturePhotoSettings photoSettings];
+        [settings setFlashMode:_flashMode];
+        
+        [_photoCaptureAdaptee.photoOutput capturePhotoWithSettings:settings
+                                             delegate:cameraPicture];
+    } else {
+        // Fallback on earlier versions
+    }
 }
 
 # pragma mark - Camera video
@@ -477,3 +807,4 @@
 }
 
 @end
+

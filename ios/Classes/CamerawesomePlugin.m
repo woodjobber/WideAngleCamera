@@ -5,6 +5,7 @@ FlutterEventSink orientationEventSink;
 FlutterEventSink videoRecordingEventSink;
 FlutterEventSink imageStreamEventSink;
 
+API_AVAILABLE(ios(10.0))
 @interface CamerawesomePlugin ()
 
 @property(readonly, nonatomic) NSObject<FlutterTextureRegistry> *registry;
@@ -149,7 +150,11 @@ FlutterEventSink imageStreamEventSink;
         [self _handleGetMaxZoom:call result:result];
     } else if ([@"dispose" isEqualToString:call.method]) {
         [self _handleDispose:call result:result];
-    } else {
+    } else if ([@"setMaxZoomFactor" isEqualToString:call.method]) {
+        double maxZoomFactor = [call.arguments[@"maxZoomFactor"] doubleValue];
+        [self.camera setMaxZoomFactor:maxZoomFactor];
+    }
+    else {
         result(FlutterMethodNotImplemented);
         return;
     };
@@ -364,6 +369,14 @@ FlutterEventSink imageStreamEventSink;
 
 - (void)_handleGetTextures:(FlutterMethodCall*)call result:(FlutterResult)result {
     result(@(_textureId));
+}
+
+- (FlutterError * _Nullable)onCancelWithArguments:(id _Nullable)arguments {
+    return nil;
+}
+
+- (FlutterError * _Nullable)onListenWithArguments:(id _Nullable)arguments eventSink:(nonnull FlutterEventSink)events {
+    return nil;
 }
 
 @end
