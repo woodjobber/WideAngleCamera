@@ -260,8 +260,11 @@ API_AVAILABLE(ios(10.0))
 @end
 
 @interface CameraPreview ()
+{
+    CGFloat _maxZoomFactor;
+}
 @property (nonatomic,strong) PhotoCaptureOutputAdaptee * photoCaptureAdaptee;
-@property (assign, nonatomic) CGFloat maxZoomFactor;
+
 @end
 
 @implementation CameraPreview {
@@ -326,6 +329,7 @@ API_AVAILABLE(ios(10.0))
     [_captureSession setSessionPreset:AVCaptureSessionPresetPhoto];
     
     NSError *error;
+    
     _captureDevice = [AVCaptureDevice deviceWithUniqueID:[self selectAvailableCamera:sensor]];
     _captureVideoInput = [AVCaptureDeviceInput deviceInputWithDevice:_captureDevice error:&error];
     
@@ -471,7 +475,7 @@ API_AVAILABLE(ios(10.0))
 }
 
 //最大缩放值
-- (CGFloat)_maxZoomFactor
+- (CGFloat)getMaxZoomFactor
 {
     CGFloat maxZoomFactor = _captureDevice.activeFormat.videoMaxZoomFactor;
     if (@available(iOS 11.0, *)) {
@@ -493,7 +497,7 @@ API_AVAILABLE(ios(10.0))
 /// Set zoom level
 - (void)setZoom:(float)value
 {
-    CGFloat maxZoom = self._maxZoomFactor;
+    CGFloat maxZoom = self.getMaxZoomFactor;
     CGFloat scaledZoom = value * (maxZoom - 1.0f) / (maxZoom - 1.0f) + 1.0f;
     if (_captureDevice.videoZoomFactor == maxZoom && value > maxZoom) {
         return;
@@ -507,7 +511,6 @@ API_AVAILABLE(ios(10.0))
 }
 
 - (void)updateZoomFactor:(CGFloat)zoomFactor {
-    
     NSError *error;
     if ([_captureDevice lockForConfiguration:&error]) {
         CGFloat zoomFactorMultiplier = [CameraHelper cameraZoomFactorMultiplierForPostion:_captureDevice.position photoCaptureOutput:_photoCaptureAdaptee];
@@ -523,7 +526,7 @@ API_AVAILABLE(ios(10.0))
         }else {
             clampedZoomFactor = zoomFactor;
         }
-        CGFloat videoZoomFactor = MIN(clampedZoomFactor, [self maxZoomFactor]);
+        CGFloat videoZoomFactor = MIN(clampedZoomFactor, [self getMaxZoomFactor]);
         _captureDevice.videoZoomFactor = videoZoomFactor;
 //        [_captureDevice rampToVideoZoomFactor:videoZoomFactor withRate:16];
         [_captureDevice unlockForConfiguration];
@@ -606,19 +609,33 @@ API_AVAILABLE(ios(10.0))
 /// Get the first available camera on device (front or rear)
 - (NSString *)selectAvailableCamera:(CameraSensor)sensor {
     NSArray<AVCaptureDevice *> *devices = [[NSArray alloc] init];
-    if (@available(iOS 10.0, *)) {
-        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
-                                                             discoverySessionWithDeviceTypes:@[ AVCaptureDeviceTypeBuiltInWideAngleCamera ]
-                                                             mediaType:AVMediaTypeVideo
-                                                             position:AVCaptureDevicePositionUnspecified];
-        devices = discoverySession.devices;
-    } else {
-        // Fallback on earlier versions
-    }
     
+    if (@available(iOS 13.0, *)) {
+        AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
+                                                             discoverySessionWithDeviceTypes:@[
+            AVCaptureDeviceTypeBuiltInTripleCamera
+      
+        ]
+                                                             mediaType:AVMediaTypeVideo
+                                                             position:AVCaptureDevicePositionBack];
+        devices = discoverySession.devices;
+    }
+    if (devices.count == 0) {
+        if (@available(iOS 10.0, *)) {
+            AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
+                                                                 discoverySessionWithDeviceTypes:@[
+                AVCaptureDeviceTypeBuiltInWideAngleCamera ]
+                                                                 mediaType:AVMediaTypeVideo
+                                                                 position:AVCaptureDevicePositionUnspecified];
+            devices = discoverySession.devices;
+        } else {
+            // Fallback on earlier versions
+        }
+        
+    }
     NSInteger cameraType = (sensor == Front) ? AVCaptureDevicePositionFront : AVCaptureDevicePositionBack;
     for (AVCaptureDevice *device in devices) {
-        if ([device position] == cameraType) {
+        if ([device position] == cameraType ) {
             return [device uniqueID];
         }
     }

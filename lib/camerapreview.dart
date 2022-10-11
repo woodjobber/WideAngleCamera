@@ -459,24 +459,25 @@ class _CameraPreviewWidget extends StatelessWidget {
 
         return Container(
           color: Colors.black,
-          child: Center(
-            child: Transform.scale(
-              scale: _calculateScale(constraints, ratio, orientation),
-              child: AspectRatio(
-                aspectRatio: ratio,
-                child: SizedBox(
-                  height: orientation == Orientation.portrait
-                      ? constraints.maxHeight
-                      : constraints.maxWidth,
-                  width: orientation == Orientation.portrait
-                      ? constraints.maxWidth
-                      : constraints.maxHeight,
-                  child:
-                      testMode ? Container() : Texture(textureId: textureId!),
-                ),
-              ),
-            ),
-          ),
+          child: Texture(textureId: textureId!),
+          // child: Center(
+          //   child: Transform.scale(
+          //     scale: _calculateScale(constraints, ratio, orientation),
+          //     child: AspectRatio(
+          //       aspectRatio: ratio,
+          //       child: SizedBox(
+          //         height: orientation == Orientation.portrait
+          //             ? constraints.maxHeight
+          //             : constraints.maxWidth,
+          //         width: orientation == Orientation.portrait
+          //             ? constraints.maxWidth
+          //             : constraints.maxHeight,
+          //         child:
+          //             testMode ? Container() : Texture(textureId: textureId!),
+          //       ),
+          //     ),
+          //   ),
+          // ),
         );
       },
     );

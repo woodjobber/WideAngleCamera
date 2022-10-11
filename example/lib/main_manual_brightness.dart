@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:camerawesome/camerawesome_plugin.dart';
 import 'package:camerawesome/models/orientations.dart';
 import 'package:camerawesome_example/utils/orientation_utils.dart';
 import 'package:camerawesome_example/widgets/camera_buttons.dart';
@@ -9,9 +10,7 @@ import 'package:camerawesome_example/widgets/take_photo_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as imgUtils;
-
 import 'package:path_provider/path_provider.dart';
-import 'package:camerawesome/camerawesome_plugin.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -42,7 +41,7 @@ class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
 
   ValueNotifier<CameraFlashes> switchFlash = ValueNotifier(CameraFlashes.NONE);
 
-  ValueNotifier<double> zoomNotifier = ValueNotifier(0);
+  ValueNotifier<double> zoomNotifier = ValueNotifier(1.0);
   ValueNotifier<Size> photoSize = ValueNotifier(null);
   ValueNotifier<Sensors> sensor = ValueNotifier(Sensors.BACK);
   ValueNotifier<double> brightnessCorrection = ValueNotifier(0);

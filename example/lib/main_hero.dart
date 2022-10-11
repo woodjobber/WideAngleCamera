@@ -77,7 +77,7 @@ class CameraView extends StatelessWidget {
   final cameraKey = ValueKey("camera");
   final bool fit;
 
-  CameraView({Key key, this.fit = true}) : super(key: key);
+  CameraView({Key key, this.fit = false}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
