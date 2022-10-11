@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
@@ -44,7 +45,13 @@ class _CameraPreviewState extends State<CameraPreview> {
         child: _videoPlayerController.value.isInitialized
             ? AspectRatio(
                 aspectRatio: _videoPlayerController.value.aspectRatio,
-                child: VideoPlayer(_videoPlayerController),
+                child: RotatedBox(
+                    quarterTurns:
+                        _videoPlayerController.value.rotationCorrection ==
+                                math.pi
+                            ? 2
+                            : 0,
+                    child: VideoPlayer(_videoPlayerController)),
               )
             : Container(),
       ),
