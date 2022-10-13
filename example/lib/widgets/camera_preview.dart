@@ -45,13 +45,7 @@ class _CameraPreviewState extends State<CameraPreview> {
         child: _videoPlayerController.value.isInitialized
             ? AspectRatio(
                 aspectRatio: _videoPlayerController.value.aspectRatio,
-                child: RotatedBox(
-                    quarterTurns:
-                        _videoPlayerController.value.rotationCorrection ==
-                                math.pi
-                            ? 2
-                            : 0,
-                    child: VideoPlayer(_videoPlayerController)),
+                child: VideoPlayer(_videoPlayerController),
               )
             : Container(),
       ),
